@@ -1,0 +1,25 @@
+import { RawIdea } from './index';
+
+export async function collectHackerNews(): Promise<RawIdea[]> {
+  const queries = ['show hn', 'ask hn revenue', 'launched saas', 'side project profit'];
+  const results: RawIdea[] = [];
+
+  for (const q of queries) {
+    const res = await fetch(
+      `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=20&numericFilters=points>10`
+    );
+    const data = await res.json();
+    for (const hit of data.hits) {
+      results.push({
+        title: hit.title,
+        description: hit.story_text?.slice(0, 500) ?? '',
+        source: 'hackernews',
+        source_url: hit.url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`,
+        score: hit.points,
+        comment_count: hit.num_comments,
+        raw_data: hit,
+      });
+    }
+  }
+  return results;
+}
