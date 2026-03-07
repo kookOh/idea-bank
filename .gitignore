@@ -1,0 +1,4 @@
+# Root-level npm artifacts (project lives in ideahunter/)
+/package.json
+/package-lock.json
+/node_modules/
