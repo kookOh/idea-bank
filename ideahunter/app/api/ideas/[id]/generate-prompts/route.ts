@@ -14,6 +14,14 @@ export async function POST(
   // 이미 생성된 경우 캐시 반환
   if (idea.generated_prompts) return NextResponse.json(idea.generated_prompts);
 
+  // 생성 중인 경우 중복 요청 방지
+  if (idea.implementation_status === 'generating') {
+    return NextResponse.json(
+      { error: 'Prompt generation already in progress' },
+      { status: 429 }
+    );
+  }
+
   await supabase.from('ideas').update({ implementation_status: 'generating' }).eq('id', id);
 
   try {

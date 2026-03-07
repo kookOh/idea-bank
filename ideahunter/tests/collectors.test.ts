@@ -13,6 +13,7 @@ describe('Data Collectors', () => {
 
   test('HackerNews: 결과 반환 및 구조 검증', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
         hits: [
           {
@@ -37,6 +38,7 @@ describe('Data Collectors', () => {
 
   test('Reddit: 결과 반환 및 구조 검증', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
         data: {
           children: [
@@ -63,6 +65,7 @@ describe('Data Collectors', () => {
 
   test('GitHub: 결과 반환 및 구조 검증', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
         items: [
           {
@@ -85,6 +88,7 @@ describe('Data Collectors', () => {
 
   test('Reddit: 낮은 점수 필터링', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
         data: {
           children: [

@@ -28,20 +28,20 @@ export async function GET(req: Request) {
         .in('source_url', urls);
       const existingUrls = new Set(existingRows?.map((r) => r.source_url) ?? []);
 
+      const toInsert = [];
       for (const item of limited) {
         if (existingUrls.has(item.source_url)) continue;
 
         // AI 분석
         const analysis = await analyzeIdea(item.title, item.description);
         const trend_score = calcTrendScore(item.score, item.comment_count, analysis);
-
-        await supabase.from('ideas').insert({
-          ...item,
-          ...analysis,
-          trend_score,
-        });
-        total++;
+        toInsert.push({ ...item, ...analysis, trend_score });
         await new Promise((r) => setTimeout(r, 500)); // rate limit 방지
+      }
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from('ideas').insert(toInsert);
+        if (error) console.error(`[${sourceName}] Batch insert failed:`, error.message);
+        total += toInsert.length;
       }
     } catch (e) {
       await supabase.from('collect_logs').insert({

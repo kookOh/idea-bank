@@ -22,7 +22,12 @@ export async function GET() {
     .order('trend_score', { ascending: false })
     .limit(10);
 
-  return NextResponse.json({ date: today, top_ideas: ideas ?? [] }, {
+  return NextResponse.json({
+    date: today,
+    top_ideas: ideas ?? [],
+    hot_topics: [],
+    market_insights: '',
+  }, {
     headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate' },
   });
 }

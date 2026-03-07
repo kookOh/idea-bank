@@ -59,7 +59,15 @@ master_prompt는 반드시:
     });
     const text = res.choices[0].message.content ?? '{}';
     const json = text.match(/\{[\s\S]*\}/)?.[0] ?? '{}';
-    return JSON.parse(json);
+    const parsed = JSON.parse(json);
+    return {
+      project_name: parsed.project_name ?? 'my-project',
+      overview: parsed.overview ?? idea.title,
+      master_prompt: parsed.master_prompt ?? '',
+      phases: Array.isArray(parsed.phases) ? parsed.phases : [],
+      tech_stack: Array.isArray(parsed.tech_stack) ? parsed.tech_stack : [],
+      free_services: Array.isArray(parsed.free_services) ? parsed.free_services : [],
+    };
   } catch {
     return {
       project_name: 'my-project',

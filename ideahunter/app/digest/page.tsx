@@ -1,19 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import IdeaCard from '@/components/IdeaCard';
 
 export default function DigestPage() {
   const [digest, setDigest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchDigest = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch('/api/digest')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`API 오류 (${r.status})`);
+        return r.json();
+      })
       .then(setDigest)
-      .catch(() => {})
+      .catch((e) => setError(e instanceof Error ? e.message : '다이제스트를 불러올 수 없습니다'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchDigest();
+  }, [fetchDigest]);
 
   return (
     <main className="min-h-screen bg-gray-950 text-gray-100">
@@ -52,7 +62,15 @@ export default function DigestPage() {
           ))}
         </div>
         {loading && <div className="text-center py-8 text-gray-500">로딩 중...</div>}
-        {!loading && !digest?.top_ideas?.length && (
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-red-400 mb-2">{error}</p>
+            <button onClick={fetchDigest} className="text-sm text-gray-400 hover:text-white underline">
+              다시 시도
+            </button>
+          </div>
+        )}
+        {!loading && !error && !digest?.top_ideas?.length && (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📭</div>
             <h3 className="text-lg font-semibold text-white mb-2">오늘의 다이제스트가 아직 없습니다</h3>

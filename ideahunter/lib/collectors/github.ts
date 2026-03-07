@@ -10,6 +10,10 @@ export async function collectGitHub(): Promise<RawIdea[]> {
         `https://api.github.com/search/repositories?q=topic:${topic}&sort=stars&per_page=10`,
         { headers: { 'Accept': 'application/vnd.github.v3+json' } }
       );
+      if (!res.ok) {
+        console.error(`[GitHub] HTTP ${res.status} for topic "${topic}"`);
+        continue;
+      }
       const data = await res.json();
       for (const repo of data.items ?? []) {
         results.push({
@@ -22,8 +26,8 @@ export async function collectGitHub(): Promise<RawIdea[]> {
           raw_data: repo,
         });
       }
-    } catch {
-      // skip failed topic
+    } catch (err) {
+      console.error(`[GitHub] Topic "${topic}" failed:`, err instanceof Error ? err.message : err);
     }
   }
   return results;

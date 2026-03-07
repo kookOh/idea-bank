@@ -17,6 +17,10 @@ export async function collectReddit(): Promise<RawIdea[]> {
         `https://www.reddit.com/r/${sub}/${sort}.json?limit=25`,
         { headers: { 'User-Agent': 'IdeaHunter/1.0' } }
       );
+      if (!res.ok) {
+        console.error(`[Reddit] HTTP ${res.status} for r/${sub}`);
+        continue;
+      }
       const data = await res.json();
       for (const post of data.data?.children ?? []) {
         const p = post.data;
@@ -31,8 +35,8 @@ export async function collectReddit(): Promise<RawIdea[]> {
           raw_data: p,
         });
       }
-    } catch {
-      // skip failed subreddit
+    } catch (err) {
+      console.error(`[Reddit] r/${sub} failed:`, err instanceof Error ? err.message : err);
     }
   }
   return results;

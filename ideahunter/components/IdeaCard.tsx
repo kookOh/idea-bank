@@ -53,16 +53,16 @@ export default function IdeaCard({ idea }: { idea: any }) {
         {idea.difficulty != null && idea.revenue_potential != null && (
           <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-800/50 rounded-lg">
             <div className="text-center">
-              <div className={`text-lg font-bold ${SCORE_COLOR(idea.revenue_potential)}`}>
-                {'★'.repeat(Math.max(0, Math.min(5, idea.revenue_potential)))}
-                {'☆'.repeat(Math.max(0, 5 - idea.revenue_potential))}
+              <div className={`text-lg font-bold ${SCORE_COLOR(Number(idea.revenue_potential) || 0)}`}>
+                {'★'.repeat(Math.max(0, Math.min(5, Number(idea.revenue_potential) || 0)))}
+                {'☆'.repeat(Math.max(0, 5 - (Number(idea.revenue_potential) || 0)))}
               </div>
               <div className="text-xs text-gray-500 mt-1">수익 잠재력</div>
             </div>
             <div className="text-center">
-              <div className={`text-lg font-bold ${SCORE_COLOR(6 - idea.difficulty)}`}>
-                {'★'.repeat(Math.max(0, Math.min(5, 6 - idea.difficulty)))}
-                {'☆'.repeat(Math.max(0, idea.difficulty - 1))}
+              <div className={`text-lg font-bold ${SCORE_COLOR(6 - (Number(idea.difficulty) || 0))}`}>
+                {'★'.repeat(Math.max(0, Math.min(5, 6 - (Number(idea.difficulty) || 0))))}
+                {'☆'.repeat(Math.max(0, (Number(idea.difficulty) || 0) - 1))}
               </div>
               <div className="text-xs text-gray-500 mt-1">구현 용이성</div>
             </div>
