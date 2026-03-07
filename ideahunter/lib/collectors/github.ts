@@ -6,9 +6,13 @@ export async function collectGitHub(): Promise<RawIdea[]> {
   const results: RawIdea[] = [];
   for (const topic of topics) {
     try {
+      const headers: Record<string, string> = { 'Accept': 'application/vnd.github.v3+json' };
+      if (process.env.GITHUB_API_TOKEN) {
+        headers['Authorization'] = `Bearer ${process.env.GITHUB_API_TOKEN}`;
+      }
       const res = await fetchWithTimeout(
         `https://api.github.com/search/repositories?q=topic:${topic}&sort=stars&per_page=10`,
-        { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        { headers }
       );
       if (!res.ok) {
         console.error(`[GitHub] HTTP ${res.status} for topic "${topic}"`);

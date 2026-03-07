@@ -18,7 +18,7 @@ export default function ImplementationModal({
   open,
   onClose,
 }: {
-  idea: any;
+  idea: { id: string; title: string; recommended_stack?: string[] | null };
   open: boolean;
   onClose: () => void;
 }) {
@@ -71,7 +71,7 @@ export default function ImplementationModal({
                 {idea.title}
               </Dialog.Description>
             </div>
-            <Dialog.Close className="text-gray-500 hover:text-white text-xl ml-4">
+            <Dialog.Close className="text-gray-500 hover:text-white text-xl ml-4" aria-label="닫기">
               ✕
             </Dialog.Close>
           </div>

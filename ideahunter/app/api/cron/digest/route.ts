@@ -1,12 +1,13 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { verifyCronSecret } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
 export async function GET(req: Request) {
-  const supabase = getSupabaseAdmin();
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronSecret(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const supabase = getSupabaseAdmin();
 
   const today = new Date().toISOString().split('T')[0];
 

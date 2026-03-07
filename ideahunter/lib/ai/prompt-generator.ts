@@ -13,7 +13,12 @@ export type GeneratedPrompts = {
   free_services: string[];
 };
 
-export async function generateImplementationPrompts(idea: any): Promise<GeneratedPrompts> {
+export async function generateImplementationPrompts(idea: {
+  title: string;
+  summary_ko?: string | null;
+  recommended_stack?: string[] | null;
+  mvp_days?: number | null;
+}): Promise<GeneratedPrompts> {
   const systemPrompt = `너는 Claude Code용 프롬프트 전문 설계자야.
 주어진 비즈니스 아이디어를 바탕으로 Claude Code CLI에 입력할 프롬프트들을 설계해.
 반드시 JSON으로만 응답해.`;

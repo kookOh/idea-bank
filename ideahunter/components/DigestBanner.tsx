@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { Digest } from '@/types/idea';
 
 export default function DigestBanner() {
-  const [digest, setDigest] = useState<any>(null);
+  const [digest, setDigest] = useState<Digest | null>(null);
 
   useEffect(() => {
     fetch('/api/digest')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('fetch failed');
+        return r.json();
+      })
       .then(setDigest)
-      .catch(() => {});
+      .catch((e) => console.error('[DigestBanner]', e));
   }, []);
 
   if (!digest?.top_ideas?.length) return null;

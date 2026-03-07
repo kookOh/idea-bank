@@ -41,6 +41,7 @@ export default function FilterBar({
       <select
         value={source}
         onChange={(e) => onSource(e.target.value)}
+        aria-label="소스 필터"
         className="bg-gray-800 text-gray-300 rounded-lg px-3 py-2 text-sm border border-gray-700"
       >
         <option value="">전체 소스</option>
@@ -53,6 +54,7 @@ export default function FilterBar({
       <select
         value={tag}
         onChange={(e) => onTag(e.target.value)}
+        aria-label="태그 필터"
         className="bg-gray-800 text-gray-300 rounded-lg px-3 py-2 text-sm border border-gray-700"
       >
         <option value="">전체 태그</option>

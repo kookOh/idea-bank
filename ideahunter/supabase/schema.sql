@@ -50,6 +50,8 @@ create table collect_logs (
 create index on ideas(collected_at desc);
 create index on ideas(trend_score desc);
 create index on ideas(source);
+create index idx_ideas_status on ideas(implementation_status);
+create index idx_ideas_source_date on ideas(source, collected_at desc);
 
 -- RLS (공개 읽기 허용)
 alter table ideas enable row level security;

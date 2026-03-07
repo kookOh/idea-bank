@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ImplementationModal from './ImplementationModal';
+import type { Idea } from '@/types/idea';
 
 const SOURCE_ICONS: Record<string, string> = {
   hackernews: '🟠',
@@ -13,7 +14,7 @@ const SOURCE_ICONS: Record<string, string> = {
 const SCORE_COLOR = (v: number) =>
   v >= 4 ? 'text-green-400' : v >= 3 ? 'text-yellow-400' : 'text-red-400';
 
-export default function IdeaCard({ idea }: { idea: any }) {
+export default function IdeaCard({ idea }: { idea: Idea }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (

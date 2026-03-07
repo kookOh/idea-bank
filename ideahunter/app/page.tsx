@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import IdeaCard from '@/components/IdeaCard';
 import FilterBar from '@/components/FilterBar';
 import DigestBanner from '@/components/DigestBanner';
+import type { Idea } from '@/types/idea';
 
 export default function Home() {
-  const [ideas, setIdeas] = useState<any[]>([]);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
   const [sort, setSort] = useState('trend_score');
   const [source, setSource] = useState('');
   const [tag, setTag] = useState('');
@@ -69,7 +70,7 @@ export default function Home() {
         />
 
         <div className="mt-6 flex flex-col gap-4">
-          {ideas.map((idea: any) => (
+          {ideas.map((idea) => (
             <IdeaCard key={idea.id} idea={idea} />
           ))}
         </div>

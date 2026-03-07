@@ -1,15 +1,16 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { collectHackerNews, collectReddit, collectProductHunt, collectGitHub } from '@/lib/collectors';
 import { analyzeIdea, calcTrendScore } from '@/lib/ai/analyzer';
+import { verifyCronSecret } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 const COLLECTOR_NAMES = ['hackernews', 'reddit', 'producthunt', 'github'] as const;
 
 export async function GET(req: Request) {
-  const supabase = getSupabaseAdmin();
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronSecret(req.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const supabase = getSupabaseAdmin();
 
   const collectors = [collectHackerNews, collectReddit, collectProductHunt, collectGitHub];
   let total = 0;

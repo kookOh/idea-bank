@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import IdeaCard from '@/components/IdeaCard';
+import type { Digest } from '@/types/idea';
 
 export default function DigestPage() {
-  const [digest, setDigest] = useState<any>(null);
+  const [digest, setDigest] = useState<Digest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +53,7 @@ export default function DigestPage() {
           </p>
         </div>
         <div className="flex flex-col gap-4">
-          {digest?.top_ideas?.map((idea: any, i: number) => (
+          {digest?.top_ideas?.map((idea, i) => (
             <div key={idea.id ?? i} className="relative">
               <div className="absolute -left-8 top-5 text-2xl font-black text-gray-700">
                 #{i + 1}
