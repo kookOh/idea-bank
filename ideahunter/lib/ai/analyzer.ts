@@ -1,8 +1,4 @@
-import Groq from 'groq-sdk';
-
-function getGroqClient() {
-  return new Groq({ apiKey: process.env.GROQ_API_KEY });
-}
+import { getGroqClient } from './groq-client';
 
 export async function analyzeIdea(title: string, description: string) {
   const prompt = `다음 비즈니스 아이디어를 분석해서 JSON으로만 응답해 (다른 텍스트 없이):

@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import ImplementationModal from './ImplementationModal';
-import type { Idea } from '@/types/idea';
+import type { Idea, PlatformAnalysis } from '@/types/idea';
 
 const SOURCE_ICONS: Record<string, string> = {
   hackernews: '🟠',
   reddit: '🟣',
   producthunt: '🔴',
   github: '⚫',
+  playstore: '🟢',
+  appstore: '🔵',
 };
 
 const SCORE_COLOR = (v: number) =>
@@ -16,11 +18,32 @@ const SCORE_COLOR = (v: number) =>
 
 export default function IdeaCard({ idea }: { idea: Idea }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [aitLoading, setAitLoading] = useState(false);
+  const [platformAnalysis, setPlatformAnalysis] = useState<PlatformAnalysis | null>(
+    idea.platform_analysis ?? null
+  );
+
+  const analyzeAit = async () => {
+    setAitLoading(true);
+    try {
+      const res = await fetch(`/api/ideas/${idea.id}/analyze-ait`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformAnalysis(data);
+      }
+    } catch {
+      // 실패 시 무시
+    }
+    setAitLoading(false);
+  };
+
+  const aitScore = platformAnalysis?.ait_score ?? 0;
+  const isAitSuitable = platformAnalysis && aitScore >= 70 && !platformAnalysis.ait_blocked_reason;
 
   return (
     <>
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-all group">
-        {/* 상단: 소스 + 점수 */}
+        {/* 상단: 소스 + 점수 + AIT 뱃지 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>{SOURCE_ICONS[idea.source] ?? '📰'}</span>
@@ -30,8 +53,20 @@ export default function IdeaCard({ idea }: { idea: Idea }) {
             <span>•</span>
             <span>💬 {idea.comment_count ?? 0}</span>
           </div>
-          <div className="flex items-center gap-1 text-sm font-bold text-purple-400">
-            🔥 {Math.round(idea.trend_score ?? 0)}
+          <div className="flex items-center gap-2">
+            {isAitSuitable && (
+              <span className="text-xs px-2 py-0.5 bg-teal-900/50 text-teal-300 rounded-full font-medium">
+                앱인토스 {aitScore}점
+              </span>
+            )}
+            {platformAnalysis?.ait_blocked_reason && (
+              <span className="text-xs px-2 py-0.5 bg-red-900/50 text-red-300 rounded-full font-medium">
+                AIT 부적합
+              </span>
+            )}
+            <div className="flex items-center gap-1 text-sm font-bold text-purple-400">
+              🔥 {Math.round(idea.trend_score ?? 0)}
+            </div>
           </div>
         </div>
 
@@ -94,18 +129,43 @@ export default function IdeaCard({ idea }: { idea: Idea }) {
           ))}
         </div>
 
-        {/* 핵심 버튼 - 프로젝트 생성 */}
-        <button
-          onClick={() => setModalOpen(true)}
-          className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 text-sm"
-        >
-          <span>⚡</span>
-          <span>이 아이디어로 프로젝트 생성하기</span>
-          <span className="text-xs opacity-70">(Claude Code 프롬프트 자동 생성)</span>
-        </button>
+        {/* 버튼 영역 */}
+        <div className="flex gap-2">
+          {/* 핵심 버튼 - 프로젝트 생성 */}
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold rounded-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 text-sm"
+          >
+            <span>⚡</span>
+            <span>프로젝트 생성하기</span>
+          </button>
+
+          {/* 앱인토스 분석/생성 버튼 */}
+          {!platformAnalysis && (
+            <button
+              onClick={analyzeAit}
+              disabled={aitLoading}
+              className="px-4 py-3 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-all text-sm whitespace-nowrap"
+            >
+              {aitLoading ? '분석 중...' : '앱인토스 분석'}
+            </button>
+          )}
+          {isAitSuitable && (
+            <button
+              onClick={() => { setModalOpen(true); }}
+              className="px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-medium rounded-lg transition-all text-sm whitespace-nowrap"
+            >
+              앱인토스로 만들기
+            </button>
+          )}
+        </div>
       </div>
 
-      <ImplementationModal idea={idea} open={modalOpen} onClose={() => setModalOpen(false)} />
+      <ImplementationModal
+        idea={{ ...idea, platform_analysis: platformAnalysis }}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
     </>
   );
 }
