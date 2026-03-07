@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const sort = searchParams.get('sort') ?? 'trend_score';
   const source = searchParams.get('source');
   const tag = searchParams.get('tag');
-  const page = parseInt(searchParams.get('page') ?? '0');
+  const page = Math.min(Math.max(0, parseInt(searchParams.get('page') ?? '0') || 0), 100);
   const limit = 20;
 
   let query = supabase

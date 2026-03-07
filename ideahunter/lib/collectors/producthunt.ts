@@ -1,4 +1,5 @@
 import { RawIdea } from './index';
+import { fetchWithTimeout } from '@/lib/fetch-utils';
 
 export async function collectProductHunt(): Promise<RawIdea[]> {
   const query = `{
@@ -11,7 +12,7 @@ export async function collectProductHunt(): Promise<RawIdea[]> {
     }
   }`;
   try {
-    const res = await fetch('https://api.producthunt.com/v2/api/graphql', {
+    const res = await fetchWithTimeout('https://api.producthunt.com/v2/api/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),

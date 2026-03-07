@@ -33,7 +33,18 @@ difficulty/revenue_potential/competition은 1-5 정수.`;
     });
     const text = res.choices[0].message.content ?? '{}';
     const json = text.match(/\{[\s\S]*\}/)?.[0] ?? '{}';
-    return JSON.parse(json);
+    const parsed = JSON.parse(json);
+    // 필수 필드 검증: 없으면 기본값으로 보충
+    return {
+      summary_ko: parsed.summary_ko ?? description.slice(0, 100),
+      market_size: parsed.market_size ?? '추정 불가',
+      difficulty: Math.min(5, Math.max(1, parsed.difficulty ?? 3)),
+      revenue_potential: Math.min(5, Math.max(1, parsed.revenue_potential ?? 3)),
+      competition: Math.min(5, Math.max(1, parsed.competition ?? 3)),
+      recommended_stack: Array.isArray(parsed.recommended_stack) ? parsed.recommended_stack : ['Next.js', 'Supabase'],
+      mvp_days: parsed.mvp_days ?? 30,
+      tags: Array.isArray(parsed.tags) ? parsed.tags : ['기타'],
+    };
   } catch {
     return {
       summary_ko: description.slice(0, 100),

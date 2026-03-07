@@ -25,9 +25,9 @@ export default function IdeaCard({ idea }: { idea: any }) {
             <span>{SOURCE_ICONS[idea.source] ?? '📰'}</span>
             <span className="capitalize">{idea.source}</span>
             <span>•</span>
-            <span>⬆ {idea.score?.toLocaleString()}</span>
+            <span>⬆ {(idea.score ?? 0).toLocaleString()}</span>
             <span>•</span>
-            <span>💬 {idea.comment_count}</span>
+            <span>💬 {idea.comment_count ?? 0}</span>
           </div>
           <div className="flex items-center gap-1 text-sm font-bold text-purple-400">
             🔥 {Math.round(idea.trend_score ?? 0)}
@@ -50,24 +50,24 @@ export default function IdeaCard({ idea }: { idea: any }) {
         )}
 
         {/* 분석 지표 */}
-        {idea.difficulty && (
+        {idea.difficulty != null && idea.revenue_potential != null && (
           <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-gray-800/50 rounded-lg">
             <div className="text-center">
               <div className={`text-lg font-bold ${SCORE_COLOR(idea.revenue_potential)}`}>
-                {'★'.repeat(idea.revenue_potential)}
-                {'☆'.repeat(5 - idea.revenue_potential)}
+                {'★'.repeat(Math.max(0, Math.min(5, idea.revenue_potential)))}
+                {'☆'.repeat(Math.max(0, 5 - idea.revenue_potential))}
               </div>
               <div className="text-xs text-gray-500 mt-1">수익 잠재력</div>
             </div>
             <div className="text-center">
               <div className={`text-lg font-bold ${SCORE_COLOR(6 - idea.difficulty)}`}>
-                {'★'.repeat(6 - idea.difficulty)}
-                {'☆'.repeat(idea.difficulty - 1)}
+                {'★'.repeat(Math.max(0, Math.min(5, 6 - idea.difficulty)))}
+                {'☆'.repeat(Math.max(0, idea.difficulty - 1))}
               </div>
               <div className="text-xs text-gray-500 mt-1">구현 용이성</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-blue-400">{idea.mvp_days}일</div>
+              <div className="text-lg font-bold text-blue-400">{idea.mvp_days ?? '?'}일</div>
               <div className="text-xs text-gray-500 mt-1">MVP 예상</div>
             </div>
           </div>

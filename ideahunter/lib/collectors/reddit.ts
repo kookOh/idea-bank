@@ -1,4 +1,5 @@
 import { RawIdea } from './index';
+import { fetchWithTimeout } from '@/lib/fetch-utils';
 
 export async function collectReddit(): Promise<RawIdea[]> {
   const subreddits = [
@@ -12,7 +13,7 @@ export async function collectReddit(): Promise<RawIdea[]> {
 
   for (const { sub, sort } of subreddits) {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://www.reddit.com/r/${sub}/${sort}.json?limit=25`,
         { headers: { 'User-Agent': 'IdeaHunter/1.0' } }
       );

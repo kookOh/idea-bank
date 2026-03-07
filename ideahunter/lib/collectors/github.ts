@@ -1,11 +1,12 @@
 import { RawIdea } from './index';
+import { fetchWithTimeout } from '@/lib/fetch-utils';
 
 export async function collectGitHub(): Promise<RawIdea[]> {
   const topics = ['saas-boilerplate', 'ai-tools', 'indie-hacker', 'side-project'];
   const results: RawIdea[] = [];
   for (const topic of topics) {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://api.github.com/search/repositories?q=topic:${topic}&sort=stars&per_page=10`,
         { headers: { 'Accept': 'application/vnd.github.v3+json' } }
       );

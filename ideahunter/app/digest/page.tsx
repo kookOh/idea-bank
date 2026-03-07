@@ -5,12 +5,14 @@ import IdeaCard from '@/components/IdeaCard';
 
 export default function DigestPage() {
   const [digest, setDigest] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/digest')
       .then((r) => r.json())
       .then(setDigest)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -49,7 +51,8 @@ export default function DigestPage() {
             </div>
           ))}
         </div>
-        {!digest?.top_ideas?.length && (
+        {loading && <div className="text-center py-8 text-gray-500">로딩 중...</div>}
+        {!loading && !digest?.top_ideas?.length && (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📭</div>
             <h3 className="text-lg font-semibold text-white mb-2">오늘의 다이제스트가 아직 없습니다</h3>

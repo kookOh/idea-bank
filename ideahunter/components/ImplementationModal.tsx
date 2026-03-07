@@ -24,17 +24,23 @@ export default function ImplementationModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [prompts, setPrompts] = useState<Prompts | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'master' | 'phases'>('master');
   const [copied, setCopied] = useState('');
 
   const generate = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/ideas/${idea.id}/generate-prompts`, { method: 'POST' });
       const data = await res.json();
-      setPrompts(data);
+      if (!res.ok || data.error) {
+        setError(data.error ?? '생성 실패');
+      } else {
+        setPrompts(data);
+      }
     } catch {
-      alert('생성 실패, 다시 시도해주세요');
+      setError('네트워크 오류, 다시 시도해주세요');
     }
     setLoading(false);
   };
@@ -70,8 +76,22 @@ export default function ImplementationModal({
             </Dialog.Close>
           </div>
 
+          {/* 에러 상태 */}
+          {error && !loading && (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-4">⚠️</div>
+              <p className="text-red-400 font-medium mb-4">{error}</p>
+              <button
+                onClick={generate}
+                className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-colors"
+              >
+                다시 시도
+              </button>
+            </div>
+          )}
+
           {/* 생성 전 상태 */}
-          {!prompts && !loading && (
+          {!prompts && !loading && !error && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🚀</div>
               <h3 className="text-lg font-semibold text-white mb-2">

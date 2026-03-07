@@ -3,6 +3,8 @@ import { collectHackerNews, collectReddit, collectProductHunt, collectGitHub } f
 import { analyzeIdea, calcTrendScore } from '@/lib/ai/analyzer';
 import { NextResponse } from 'next/server';
 
+const COLLECTOR_NAMES = ['hackernews', 'reddit', 'producthunt', 'github'] as const;
+
 export async function GET(req: Request) {
   const supabase = getSupabaseAdmin();
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -12,17 +14,22 @@ export async function GET(req: Request) {
   const collectors = [collectHackerNews, collectReddit, collectProductHunt, collectGitHub];
   let total = 0;
 
-  for (const collector of collectors) {
+  for (let i = 0; i < collectors.length; i++) {
+    const sourceName = COLLECTOR_NAMES[i];
     try {
-      const items = await collector();
-      for (const item of items.slice(0, 10)) {
-        // 중복 체크
-        const { data: existing } = await supabase
-          .from('ideas')
-          .select('id')
-          .eq('source_url', item.source_url)
-          .single();
-        if (existing) continue;
+      const items = await collectors[i]();
+      const limited = items.slice(0, 10);
+
+      // 배치 중복 체크: 모든 URL을 한 번에 조회
+      const urls = limited.map((item) => item.source_url).filter(Boolean);
+      const { data: existingRows } = await supabase
+        .from('ideas')
+        .select('source_url')
+        .in('source_url', urls);
+      const existingUrls = new Set(existingRows?.map((r) => r.source_url) ?? []);
+
+      for (const item of limited) {
+        if (existingUrls.has(item.source_url)) continue;
 
         // AI 분석
         const analysis = await analyzeIdea(item.title, item.description);
@@ -38,9 +45,9 @@ export async function GET(req: Request) {
       }
     } catch (e) {
       await supabase.from('collect_logs').insert({
-        source: 'unknown',
+        source: sourceName,
         collected_count: 0,
-        error: String(e),
+        error: e instanceof Error ? e.message : String(e),
       });
     }
   }

@@ -11,19 +11,22 @@ export default function Home() {
   const [source, setSource] = useState('');
   const [tag, setTag] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   const fetchIdeas = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ sort, page: String(page) });
     if (source) params.set('source', source);
     if (tag) params.set('tag', tag);
     try {
       const res = await fetch(`/api/ideas?${params}`);
+      if (!res.ok) throw new Error(`API 오류 (${res.status})`);
       const data = await res.json();
       setIdeas((prev) => (page === 0 ? (data.ideas ?? []) : [...prev, ...(data.ideas ?? [])]));
-    } catch {
-      // API not configured yet
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '데이터를 불러올 수 없습니다');
     }
     setLoading(false);
   }, [sort, source, tag, page]);
@@ -73,7 +76,16 @@ export default function Home() {
 
         {loading && <div className="text-center py-8 text-gray-500">로딩 중...</div>}
 
-        {!loading && ideas.length === 0 && (
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-red-400 mb-2">{error}</p>
+            <button onClick={() => fetchIdeas()} className="text-sm text-gray-400 hover:text-white underline">
+              다시 시도
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && ideas.length === 0 && (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">🔍</div>
             <h3 className="text-lg font-semibold text-white mb-2">아직 수집된 아이디어가 없습니다</h3>

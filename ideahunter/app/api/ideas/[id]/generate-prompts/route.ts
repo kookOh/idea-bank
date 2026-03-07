@@ -16,11 +16,19 @@ export async function POST(
 
   await supabase.from('ideas').update({ implementation_status: 'generating' }).eq('id', id);
 
-  const prompts = await generateImplementationPrompts(idea);
-  await supabase.from('ideas').update({
-    generated_prompts: prompts,
-    implementation_status: 'done',
-  }).eq('id', id);
-
-  return NextResponse.json(prompts);
+  try {
+    const prompts = await generateImplementationPrompts(idea);
+    if (!prompts.master_prompt) {
+      await supabase.from('ideas').update({ implementation_status: 'error' }).eq('id', id);
+      return NextResponse.json({ error: 'Failed to generate prompts' }, { status: 500 });
+    }
+    await supabase.from('ideas').update({
+      generated_prompts: prompts,
+      implementation_status: 'done',
+    }).eq('id', id);
+    return NextResponse.json(prompts);
+  } catch {
+    await supabase.from('ideas').update({ implementation_status: 'error' }).eq('id', id);
+    return NextResponse.json({ error: 'Prompt generation failed' }, { status: 500 });
+  }
 }

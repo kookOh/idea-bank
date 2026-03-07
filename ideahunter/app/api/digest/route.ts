@@ -10,7 +10,9 @@ export async function GET() {
     .select('*')
     .eq('date', today)
     .single();
-  if (existing) return NextResponse.json(existing);
+  if (existing) return NextResponse.json(existing, {
+    headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate' },
+  });
 
   // 없으면 실시간 생성
   const { data: ideas } = await supabase
@@ -20,5 +22,7 @@ export async function GET() {
     .order('trend_score', { ascending: false })
     .limit(10);
 
-  return NextResponse.json({ date: today, top_ideas: ideas ?? [] });
+  return NextResponse.json({ date: today, top_ideas: ideas ?? [] }, {
+    headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate' },
+  });
 }
