@@ -44,6 +44,10 @@ export async function GET(req: Request) {
         if (error) console.error(`[${sourceName}] Batch insert failed:`, error.message);
         total += toInsert.length;
       }
+      await supabase.from('collect_logs').insert({
+        source: sourceName,
+        collected_count: toInsert.length,
+      });
     } catch (e) {
       await supabase.from('collect_logs').insert({
         source: sourceName,
