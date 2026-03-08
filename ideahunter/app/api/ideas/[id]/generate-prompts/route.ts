@@ -19,9 +19,10 @@ export async function POST(
 
   const { searchParams } = new URL(req.url);
   const platform = searchParams.get('platform') as 'appintoss' | null;
+  const force = searchParams.get('force') === 'true';
 
-  // 이미 생성된 경우 캐시 반환
-  if (idea.generated_prompts) {
+  // 이미 생성된 경우 캐시 반환 (force=true면 무시)
+  if (!force && idea.generated_prompts) {
     // appintoss 플랫폼 요청 시 appintoss 키가 있으면 반환
     if (platform === 'appintoss' && idea.generated_prompts.appintoss) {
       return NextResponse.json(idea.generated_prompts.appintoss);

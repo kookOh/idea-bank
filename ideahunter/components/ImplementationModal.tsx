@@ -35,13 +35,15 @@ export default function ImplementationModal({
   const [activeTab, setActiveTab] = useState<'master' | 'phases' | 'appintoss'>('master');
   const [copied, setCopied] = useState('');
 
-  const generate = async (platform?: 'appintoss') => {
+  const generate = async (platform?: 'appintoss', force?: boolean) => {
     setLoading(true);
     setError(null);
     try {
-      const url = platform
-        ? `/api/ideas/${idea.id}/generate-prompts?platform=${platform}`
-        : `/api/ideas/${idea.id}/generate-prompts`;
+      const params = new URLSearchParams();
+      if (platform) params.set('platform', platform);
+      if (force) params.set('force', 'true');
+      const qs = params.toString();
+      const url = `/api/ideas/${idea.id}/generate-prompts${qs ? `?${qs}` : ''}`;
       const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -247,14 +249,23 @@ export default function ImplementationModal({
                     </div>
                   </div>
 
-                  <button
-                    onClick={copyAll}
-                    className="w-full mt-4 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    {copied === 'all'
-                      ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
-                      : '⚡ 실행 스크립트 전체 복사 (Claude Code에 바로 사용)'}
-                  </button>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={copyAll}
+                      className="flex-1 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      {copied === 'all'
+                        ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
+                        : '⚡ 마스터 프롬프트 전체 복사'}
+                    </button>
+                    <button
+                      onClick={() => generate(undefined, true)}
+                      disabled={loading}
+                      className="px-4 py-4 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 font-medium rounded-xl transition-all text-sm whitespace-nowrap"
+                    >
+                      {loading ? '생성 중...' : '재생성'}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -329,14 +340,23 @@ export default function ImplementationModal({
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => copy(aitPrompts.master_prompt, 'ait-all')}
-                    className="w-full mt-4 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    {copied === 'ait-all'
-                      ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
-                      : '📱 앱인토스 마스터 프롬프트 전체 복사'}
-                  </button>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => copy(aitPrompts.master_prompt, 'ait-all')}
+                      className="flex-1 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      {copied === 'ait-all'
+                        ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
+                        : '📱 앱인토스 마스터 프롬프트 전체 복사'}
+                    </button>
+                    <button
+                      onClick={() => generate('appintoss', true)}
+                      disabled={loading}
+                      className="px-4 py-4 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 font-medium rounded-xl transition-all text-sm whitespace-nowrap"
+                    >
+                      {loading ? '생성 중...' : '재생성'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
