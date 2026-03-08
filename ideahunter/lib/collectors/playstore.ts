@@ -2,13 +2,28 @@ import { RawIdea } from './index';
 import { fetchWithTimeout } from '@/lib/fetch-utils';
 import { collectWithRetry, deduplicateByField } from './utils';
 
-async function fetchPlayStoreTrending(): Promise<RawIdea[]> {
+/** 이미 너무 유명한 대형 앱 패키지 필터링 */
+const MEGA_APP_PREFIXES = [
+  'com.facebook.', 'com.google.', 'com.whatsapp', 'com.instagram.',
+  'com.snapchat.', 'com.twitter.', 'com.zhiliaoapp.', 'com.spotify.',
+  'com.netflix.', 'com.amazon.', 'com.microsoft.', 'com.apple.',
+  'com.tencent.', 'com.bytedance.', 'com.samsung.', 'com.huawei.',
+  'com.uber.', 'com.paypal.', 'jp.naver.line.', 'com.kakao.',
+  'com.einnovation.temu', 'com.reddit.', 'com.discord',
+  'com.linkedin.', 'org.telegram.', 'com.pinterest.',
+];
+
+function isMegaApp(appId: string): boolean {
+  return MEGA_APP_PREFIXES.some((prefix) => appId.startsWith(prefix));
+}
+
+async function fetchPlayStoreNew(): Promise<RawIdea[]> {
   const results: RawIdea[] = [];
 
-  // Google Play 인기 앱 페이지 여러 URL 시도
+  // Google Play "신규" / "인기 상승" 컬렉션 타겟
   const urls = [
+    'https://play.google.com/store/apps/new?hl=ko&gl=kr',
     'https://play.google.com/store/apps/top?hl=ko&gl=kr',
-    'https://play.google.com/store/apps/collection/cluster?clp=ogoGCAEqAggB&hl=ko&gl=kr',
   ];
 
   for (const url of urls) {
@@ -24,67 +39,52 @@ async function fetchPlayStoreTrending(): Promise<RawIdea[]> {
 
       const html = await res.text();
       const seen = new Set<string>();
-
-      // 패턴 1: details?id=... 링크에서 앱 ID 추출
       const idPattern = /\/store\/apps\/details\?id=([\w.]+)/g;
       let match;
 
       while ((match = idPattern.exec(html)) !== null) {
         const appId = match[1];
-        if (seen.has(appId)) continue;
+        if (seen.has(appId) || isMegaApp(appId)) continue;
         seen.add(appId);
 
-        // 앱 ID 주변에서 제목 추출 시도
+        // 앱 ID 주변에서 제목 추출
         const contextStart = Math.max(0, match.index - 500);
         const contextEnd = Math.min(html.length, match.index + 500);
         const context = html.slice(contextStart, contextEnd);
 
-        // 여러 패턴으로 제목 추출 시도
-        const titlePatterns = [
-          new RegExp(`>${escapeForRegex(appId)}[^<]*</a>\\s*</td>\\s*<td[^>]*>([^<]+)`, 'i'),
-          new RegExp(`>([^<]{2,60})</[^>]*>\\s*(?:[^<]*<[^>]*>)*\\s*[^<]*${escapeForRegex(appId)}`, 'i'),
-          new RegExp(`${escapeForRegex(appId)}[\\s\\S]{0,200}?class="[^"]*"[^>]*>([^<]{2,60})<`, 'i'),
-          /class="[^"]*"[^>]*>([^<]{2,60})<\/(?:span|div|a)/i,
-        ];
-
         let title = '';
-        for (const tp of titlePatterns) {
-          const tm = context.match(tp);
-          if (tm?.[1] && tm[1].trim().length > 1) {
-            title = tm[1].trim();
-            break;
-          }
+        const titleMatch = context.match(/class="[^"]*"[^>]*>([^<]{2,60})<\/(?:span|div|a)/i);
+        if (titleMatch?.[1]?.trim()) {
+          title = titleMatch[1].trim();
         }
-
         if (!title) title = appId.split('.').pop() ?? appId;
 
+        const isNewPage = url.includes('/new');
         results.push({
           title,
-          description: 'Google Play 트렌딩 앱',
+          description: isNewPage ? 'Google Play 신규 등록 앱' : 'Google Play 인기 상승 앱',
           source: 'playstore',
           source_url: `https://play.google.com/store/apps/details?id=${appId}`,
           score: 0,
           comment_count: 0,
-          raw_data: { appId, store: 'google_play' },
+          raw_data: { appId, store: 'google_play', type: isNewPage ? 'new' : 'rising' },
         });
       }
-
-      if (results.length > 0) break; // 성공하면 다음 URL 스킵
     } catch (err) {
       console.error(`[PlayStore] Failed for ${url}:`, err instanceof Error ? err.message : err);
     }
   }
 
-  // HTML 파싱 실패 시 AppBrain fallback
+  // Google Play 파싱 실패 시 AppBrain fallback
   if (results.length === 0) {
-    return fetchFromAppBrain();
+    return fetchNewFromAppBrain();
   }
 
   return results;
 }
 
-/** AppBrain에서 인기 앱 목록 가져오기 (fallback) */
-async function fetchFromAppBrain(): Promise<RawIdea[]> {
+/** AppBrain에서 신규 인기 앱 가져오기 (fallback) */
+async function fetchNewFromAppBrain(): Promise<RawIdea[]> {
   const results: RawIdea[] = [];
 
   try {
@@ -98,30 +98,26 @@ async function fetchFromAppBrain(): Promise<RawIdea[]> {
       15000
     );
 
-    if (!res.ok) {
-      console.error(`[PlayStore/AppBrain] HTTP ${res.status}`);
-      return [];
-    }
+    if (!res.ok) return [];
 
     const html = await res.text();
-    // AppBrain 앱 링크 패턴: /app/앱이름/패키지명
     const appPattern = /\/app\/([^/"]+)\/([\w.]+)"[^>]*>\s*(?:<[^>]*>)*\s*([^<]+)/g;
     let match;
     const seen = new Set<string>();
 
     while ((match = appPattern.exec(html)) !== null) {
-      const [, slug, appId, title] = match;
-      if (seen.has(appId)) continue;
+      const [, slug, appId, rawTitle] = match;
+      if (seen.has(appId) || isMegaApp(appId)) continue;
       seen.add(appId);
 
       results.push({
-        title: title.trim() || slug.replace(/-/g, ' '),
+        title: rawTitle.trim() || slug.replace(/-/g, ' '),
         description: 'Google Play 신규 인기 앱 (AppBrain)',
         source: 'playstore',
         source_url: `https://play.google.com/store/apps/details?id=${appId}`,
         score: 0,
         comment_count: 0,
-        raw_data: { appId, store: 'google_play', via: 'appbrain' },
+        raw_data: { appId, store: 'google_play', type: 'new', via: 'appbrain' },
       });
     }
   } catch (err) {
@@ -131,11 +127,7 @@ async function fetchFromAppBrain(): Promise<RawIdea[]> {
   return results;
 }
 
-function escapeForRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 export async function collectPlayStore(): Promise<RawIdea[]> {
-  const items = await collectWithRetry(fetchPlayStoreTrending);
+  const items = await collectWithRetry(fetchPlayStoreNew);
   return deduplicateByField(items, 'source_url').slice(0, 25);
 }
