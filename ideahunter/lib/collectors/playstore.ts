@@ -2,20 +2,7 @@ import { RawIdea } from './index';
 import { fetchWithTimeout } from '@/lib/fetch-utils';
 import { collectWithRetry, deduplicateByField } from './utils';
 
-/** 이미 너무 유명한 대형 앱 패키지 필터링 */
-const MEGA_APP_PREFIXES = [
-  'com.facebook.', 'com.google.', 'com.whatsapp', 'com.instagram.',
-  'com.snapchat.', 'com.twitter.', 'com.zhiliaoapp.', 'com.spotify.',
-  'com.netflix.', 'com.amazon.', 'com.microsoft.', 'com.apple.',
-  'com.tencent.', 'com.bytedance.', 'com.samsung.', 'com.huawei.',
-  'com.uber.', 'com.paypal.', 'jp.naver.line.', 'com.kakao.',
-  'com.einnovation.temu', 'com.reddit.', 'com.discord',
-  'com.linkedin.', 'org.telegram.', 'com.pinterest.',
-];
-
-function isMegaApp(appId: string): boolean {
-  return MEGA_APP_PREFIXES.some((prefix) => appId.startsWith(prefix));
-}
+import { isMegaApp } from './mega-filter';
 
 async function fetchPlayStoreNew(): Promise<RawIdea[]> {
   const results: RawIdea[] = [];
@@ -52,12 +39,7 @@ async function fetchPlayStoreNew(): Promise<RawIdea[]> {
         const contextEnd = Math.min(html.length, match.index + 500);
         const context = html.slice(contextStart, contextEnd);
 
-        let title = '';
-        const titleMatch = context.match(/class="[^"]*"[^>]*>([^<]{2,60})<\/(?:span|div|a)/i);
-        if (titleMatch?.[1]?.trim()) {
-          title = titleMatch[1].trim();
-        }
-        if (!title) title = appId.split('.').pop() ?? appId;
+        const title = extractTitle(context, appId);
 
         const isNewPage = url.includes('/new');
         results.push({
@@ -125,6 +107,45 @@ async function fetchNewFromAppBrain(): Promise<RawIdea[]> {
   }
 
   return results;
+}
+
+/** HTML 컨텍스트에서 앱 제목 추출, 실패 시 패키지명을 사람이 읽기 좋게 변환 */
+function extractTitle(context: string, appId: string): string {
+  // 여러 패턴으로 제목 추출 시도
+  const patterns = [
+    // aria-label 속성에서 앱 이름
+    /aria-label="([^"]{2,60})"/i,
+    // alt 속성에서 앱 이름
+    /alt="([^"]{2,60})"/i,
+    // 링크 텍스트
+    />([^<]{2,60})<\/a>/i,
+    // span/div 텍스트
+    /class="[^"]*"[^>]*>([^<]{2,60})<\/(?:span|div)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const m = context.match(pattern);
+    if (m?.[1]?.trim() && !looksLikeJunk(m[1].trim())) {
+      return m[1].trim();
+    }
+  }
+
+  // fallback: 패키지명을 읽기 좋은 형태로 변환
+  // com.example.myapp → My App
+  const lastPart = appId.split('.').pop() ?? appId;
+  return lastPart
+    .replace(/([a-z])([A-Z])/g, '$1 $2')  // camelCase → space
+    .replace(/[_-]/g, ' ')                  // snake_case → space
+    .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize
+}
+
+/** HTML 태그 잔해나 의미 없는 문자열 필터 */
+function looksLikeJunk(str: string): boolean {
+  if (/^[\d\s.,]+$/.test(str)) return true;       // 숫자만
+  if (/^[{[\]}<>\/\\]/.test(str)) return true;     // 코드 잔해
+  if (str.length < 2) return true;                  // 너무 짧음
+  if (/^\s*(true|false|null|undefined)\s*$/i.test(str)) return true;
+  return false;
 }
 
 export async function collectPlayStore(): Promise<RawIdea[]> {
