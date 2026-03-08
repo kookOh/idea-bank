@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "jest --passWithNoTests",
     "test:e2e": "playwright test",
-    "test:all": "npm run test && npm run test:e2e"
+    "test:all": "npm run test && npm run test:e2e",
+    "collect": "./scripts/manual-run.sh collect",
+    "digest": "./scripts/manual-run.sh digest",
+    "collect:all": "./scripts/manual-run.sh all"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
