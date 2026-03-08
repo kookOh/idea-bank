@@ -1,7 +1,3 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "cd ideahunter && npm run build",
-  "installCommand": "cd ideahunter && npm install",
-  "outputDirectory": "ideahunter/.next",
-  "rootDirectory": "ideahunter"
+  "framework": "nextjs"
 }
