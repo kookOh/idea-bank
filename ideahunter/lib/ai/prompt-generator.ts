@@ -44,38 +44,57 @@ export async function generateImplementationPrompts(
       free_services: ['토스 앱인토스 플랫폼', 'AdMob IAA', 'Supabase free'],
     };
   }
-  const systemPrompt = `너는 Claude Code용 프롬프트 전문 설계자야.
-주어진 비즈니스 아이디어를 바탕으로 Claude Code CLI에 입력할 프롬프트들을 설계해.
-반드시 JSON으로만 응답해.`;
+  const stack = idea.recommended_stack?.join(', ') ?? 'Next.js, Supabase';
+  const tags = idea.tags?.join(', ') ?? '';
+  const mvpDays = idea.mvp_days ?? 14;
 
-  const userPrompt = `
-아이디어: ${idea.title}
-설명: ${idea.summary_ko}
-추천 스택: ${idea.recommended_stack?.join(', ')}
-MVP 예상: ${idea.mvp_days}일
+  const systemPrompt = `You are a Korean-language prompt engineer for Claude Code CLI.
+You MUST respond with ONLY a JSON object. No markdown, no code fences, no explanation.
+All text values in the JSON MUST be written in Korean (한국어).
+The master_prompt must be extremely detailed and specific to the given idea.`;
 
-다음 JSON 형식으로 Claude Code 프롬프트 세트를 만들어줘:
+  const userPrompt = `아이디어: ${idea.title}
+설명: ${idea.summary_ko ?? '설명 없음'}
+추천 스택: ${stack}
+태그: ${tags}
+MVP 기간: ${mvpDays}일
+수익 잠재력: ${idea.revenue_potential ?? 3}/5
+시장 규모: ${idea.market_size ?? '미정'}
+
+위 아이디어를 실제로 구현하는 Claude Code 프롬프트를 JSON으로 생성해.
+
+master_prompt 작성 규칙:
+1. 반드시 한국어로 작성
+2. 이 아이디어에 특화된 구체적인 내용 (DB 테이블명, API 엔드포인트, UI 화면 목록)
+3. 다음 섹션을 모두 포함:
+   - [프로젝트 개요]: 무엇을 만드는지 2-3줄
+   - [기술 스택]: 사용할 프레임워크/라이브러리 (무료만)
+   - [DB 스키마]: Supabase 테이블 설계 (테이블명, 컬럼, 관계)
+   - [API 설계]: REST 엔드포인트 목록 (GET/POST/PUT/DELETE)
+   - [UI 화면]: 페이지별 컴포넌트 구성
+   - [핵심 기능]: 비즈니스 로직 상세
+   - [테스트]: Jest 단위 + Playwright E2E
+   - [배포]: Vercel + Supabase 배포 설정
+4. "유료 서비스 절대 사용 금지. 에러 발생시 자동 수정 후 계속 진행." 포함
+5. 최소 800자 이상
+
+phases는 5단계로 나누되, 각 prompt는 해당 단계에서 구체적으로 할 일을 한국어로 상세히 작성.
+
+JSON 형식:
 {
-  "project_name": "영문 소문자 프로젝트명",
-  "overview": "프로젝트 한 줄 설명",
-  "master_prompt": "Claude Code에 한 번에 입력할 전체 구현 프롬프트 (매우 상세하게, 기술스택/DB스키마/API/UI/테스트 모두 포함)",
+  "project_name": "영문-소문자-프로젝트명",
+  "overview": "한국어 프로젝트 한 줄 설명",
+  "master_prompt": "위 규칙을 따른 상세 한국어 프롬프트",
   "phases": [
-    { "step": 1, "title": "초기화", "prompt": "단계별 짧은 프롬프트" },
-    { "step": 2, "title": "DB 설계", "prompt": "..." },
-    { "step": 3, "title": "백엔드", "prompt": "..." },
-    { "step": 4, "title": "프론트엔드", "prompt": "..." },
-    { "step": 5, "title": "테스트/배포", "prompt": "..." }
+    {"step": 1, "title": "프로젝트 초기화", "prompt": "구체적 한국어 지시"},
+    {"step": 2, "title": "DB/백엔드", "prompt": "구체적 한국어 지시"},
+    {"step": 3, "title": "프론트엔드 UI", "prompt": "구체적 한국어 지시"},
+    {"step": 4, "title": "핵심 기능", "prompt": "구체적 한국어 지시"},
+    {"step": 5, "title": "테스트/배포", "prompt": "구체적 한국어 지시"}
   ],
   "tech_stack": ["Next.js", "Supabase"],
-  "free_services": ["Vercel", "Supabase free", "Groq free"]
-}
-
-master_prompt는 반드시:
-- 유료 서비스 사용 금지 명시
-- 자동 테스트 포함 (Jest + Playwright)
-- Vercel + Supabase 배포까지 포함
-- 에러 발생시 자동 수정 후 계속 진행 지시
-- 최소 500자 이상으로 상세하게`;
+  "free_services": ["Vercel", "Supabase free"]
+}`;
 
   try {
     const res = await getGroqClient().chat.completions.create({
