@@ -1,10 +1,10 @@
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { collectHackerNews, collectReddit, collectProductHunt, collectGitHub, collectPlayStore, collectAppStore } from '@/lib/collectors';
+import { collectHackerNews, collectReddit, collectProductHunt, collectGitHub, collectPlayStore, collectAppStore, collectAppBrain } from '@/lib/collectors';
 import { analyzeIdea, calcTrendScore } from '@/lib/ai/analyzer';
 import { verifyCronSecret } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
-const COLLECTOR_NAMES = ['hackernews', 'reddit', 'producthunt', 'github', 'playstore', 'appstore'] as const;
+const COLLECTOR_NAMES = ['hackernews', 'reddit', 'producthunt', 'github', 'playstore', 'appstore', 'appbrain'] as const;
 
 export async function GET(req: Request) {
   if (!verifyCronSecret(req.headers.get('authorization'))) {
@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   }
   const supabase = getSupabaseAdmin();
 
-  const collectors = [collectHackerNews, collectReddit, collectProductHunt, collectGitHub, collectPlayStore, collectAppStore];
+  const collectors = [collectHackerNews, collectReddit, collectProductHunt, collectGitHub, collectPlayStore, collectAppStore, collectAppBrain];
   let total = 0;
 
   for (let i = 0; i < collectors.length; i++) {
