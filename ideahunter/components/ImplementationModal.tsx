@@ -34,11 +34,82 @@ export default function ImplementationModal({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'master' | 'phases' | 'appintoss'>('master');
   const [copied, setCopied] = useState('');
+  const [usedProvider, setUsedProvider] = useState<string | null>(null);
+
+  const isBridgeAlive = async (): Promise<boolean> => {
+    try {
+      const res = await fetch('http://localhost:3100/health', {
+        signal: AbortSignal.timeout(3_000),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data.status === 'ok';
+    } catch {
+      return false;
+    }
+  };
+
+  const tryLocalBridge = async (ideaData: typeof idea, platform?: 'appintoss') => {
+    // Phase 1: 빠른 health probe (3초)
+    const alive = await isBridgeAlive();
+    if (!alive) return null;
+
+    // Phase 2: 실제 생성 (90초 — CLI 실행 시간 충분히 확보)
+    try {
+      const res = await fetch('http://localhost:3100/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea: ideaData, platform }),
+        signal: AbortSignal.timeout(90_000),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data.master_prompt) return null;
+      return data as { provider: string } & Prompts;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveToServer = async (ideaId: string, promptData: Prompts, platform?: 'appintoss') => {
+    try {
+      const url = platform
+        ? `/api/ideas/${ideaId}/save-prompts?platform=${platform}`
+        : `/api/ideas/${ideaId}/save-prompts`;
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(promptData),
+      });
+    } catch {
+      // 캐시 저장 실패는 무시
+    }
+  };
 
   const generate = async (platform?: 'appintoss', force?: boolean) => {
     setLoading(true);
     setError(null);
+    setUsedProvider(null);
     try {
+      // 1순위: 로컬 브릿지 (Claude Code CLI → Codex CLI)
+      if (!force) {
+        const localResult = await tryLocalBridge(idea, platform);
+        if (localResult) {
+          const { provider, ...promptData } = localResult;
+          setUsedProvider(provider);
+          if (platform === 'appintoss') {
+            setAitPrompts(promptData);
+            setActiveTab('appintoss');
+          } else {
+            setPrompts(promptData);
+          }
+          saveToServer(idea.id, promptData, platform);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2순위: 서버 API (Groq)
       const params = new URLSearchParams();
       if (platform) params.set('platform', platform);
       if (force) params.set('force', 'true');
@@ -49,6 +120,7 @@ export default function ImplementationModal({
       if (!res.ok || data.error) {
         setError(data.error ?? '생성 실패');
       } else {
+        setUsedProvider('groq');
         if (platform === 'appintoss') {
           setAitPrompts(data);
           setActiveTab('appintoss');
@@ -156,7 +228,7 @@ export default function ImplementationModal({
                 )}
               </div>
               <p className="text-gray-600 text-xs mt-3">
-                Groq AI 사용 (무료) · 약 10-20초 소요
+                로컬 CLI 우선 (Claude Code → Codex) · 폴백: Groq AI
               </p>
             </div>
           )}
@@ -184,6 +256,16 @@ export default function ImplementationModal({
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-green-400">✓</span>
                       <span className="font-semibold text-white">{currentPrompts.project_name}</span>
+                      {usedProvider && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          usedProvider === 'claude-code' ? 'bg-orange-900/40 text-orange-300' :
+                          usedProvider === 'codex' ? 'bg-emerald-900/40 text-emerald-300' :
+                          'bg-blue-900/40 text-blue-300'
+                        }`}>
+                          {usedProvider === 'claude-code' ? 'Claude Code' :
+                           usedProvider === 'codex' ? 'Codex' : 'Groq AI'}
+                        </span>
+                      )}
                     </div>
                     <p className="text-gray-400 text-sm mb-3">{currentPrompts.overview}</p>
                     <div className="flex flex-wrap gap-2">

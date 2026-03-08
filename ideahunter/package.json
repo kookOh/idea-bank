@@ -10,6 +10,8 @@
     "test": "jest --passWithNoTests",
     "test:e2e": "playwright test",
     "test:all": "npm run test && npm run test:e2e",
+    "bridge:start": "npx tsx bridge/server.ts",
+    "bridge:dev": "npx tsx --watch bridge/server.ts",
     "collect": "./scripts/manual-run.sh collect",
     "digest": "./scripts/manual-run.sh digest",
     "collect:all": "./scripts/manual-run.sh all"
@@ -35,6 +37,6 @@
     "jest": "^30.2.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.6",
-    "typescript": "^5"
+    "typescript": "5.9.3"
   }
 }
