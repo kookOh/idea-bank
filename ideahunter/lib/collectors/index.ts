@@ -14,3 +14,4 @@ export { collectProductHunt } from './producthunt';
 export { collectGitHub } from './github';
 export { collectPlayStore } from './playstore';
 export { collectAppStore } from './appstore';
+export { collectAppBrain } from './appbrain';
