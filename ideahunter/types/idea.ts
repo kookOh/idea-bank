@@ -2,7 +2,7 @@ export interface Idea {
   id: string;
   title: string;
   description: string | null;
-  source: 'hackernews' | 'reddit' | 'producthunt' | 'github';
+  source: 'hackernews' | 'reddit' | 'producthunt' | 'github' | 'playstore' | 'appstore';
   source_url: string;
   score: number;
   comment_count: number;
@@ -16,9 +16,18 @@ export interface Idea {
   mvp_days: number | null;
   tags: string[] | null;
   trend_score: number;
-  generated_prompts: GeneratedPrompts | null;
+  generated_prompts: GeneratedPrompts | { default?: GeneratedPrompts; appintoss?: GeneratedPrompts } | null;
   implementation_status: 'pending' | 'generating' | 'done' | 'error';
   raw_data: Record<string, unknown> | null;
+  platform_analysis?: PlatformAnalysis | null;
+}
+
+export interface PlatformAnalysis {
+  ait_score: number;
+  ait_category: string;
+  ait_blocked_reason: string | null;
+  ait_ad_revenue_estimate: string;
+  ait_target_type: 'webview' | 'react-native';
 }
 
 export interface GeneratedPrompts {
@@ -28,6 +37,12 @@ export interface GeneratedPrompts {
   phases: { step: number; title: string; prompt: string }[];
   tech_stack: string[];
   free_services: string[];
+}
+
+export interface AitGeneratedPrompts extends GeneratedPrompts {
+  platform_type: 'webview' | 'react-native';
+  improvement_points: string[];
+  marketing_strategy: string;
 }
 
 export interface Digest {

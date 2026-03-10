@@ -42,6 +42,9 @@ export default function DigestPage() {
           <a href="/digest" className="text-white font-medium">
             오늘의 TOP 10
           </a>
+          <a href="/ait" className="text-gray-400 hover:text-white">
+            앱인토스
+          </a>
         </nav>
       </header>
 
@@ -52,6 +55,32 @@ export default function DigestPage() {
             {digest?.date} · AI가 선정한 TOP {digest?.top_ideas?.length ?? 0}개
           </p>
         </div>
+
+        {digest?.hot_topics && digest.hot_topics.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              🔥 오늘의 트렌드 키워드
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {digest.hot_topics.map((topic, i) => (
+                <span
+                  key={i}
+                  className="px-3 py-1 rounded-full text-sm font-medium bg-purple-900/50 text-purple-200 border border-purple-700/50"
+                >
+                  {topic}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {digest?.market_insights && (
+          <div className="mb-8 p-4 rounded-xl bg-blue-900/20 border border-blue-700/40">
+            <h3 className="text-sm font-semibold text-blue-300 mb-2">📊 시장 인사이트</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">{digest.market_insights}</p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4">
           {digest?.top_ideas?.map((idea, i) => (
             <div key={idea.id ?? i} className="relative">

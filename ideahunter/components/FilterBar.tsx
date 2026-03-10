@@ -1,22 +1,26 @@
 'use client';
 
-const SOURCES = ['hackernews', 'reddit', 'producthunt', 'github'];
+const SOURCES = ['hackernews', 'reddit', 'producthunt', 'github', 'playstore', 'appstore'];
 const TAGS = ['SaaS', 'AI', 'B2B', 'Mobile', 'B2C', 'No-code', 'API', 'EdTech'];
 
 export default function FilterBar({
   sort,
   source,
   tag,
+  aitOnly,
   onSort,
   onSource,
   onTag,
+  onAitOnly,
 }: {
   sort: string;
   source: string;
   tag: string;
+  aitOnly?: boolean;
   onSort: (s: string) => void;
   onSource: (s: string) => void;
   onTag: (t: string) => void;
+  onAitOnly?: (v: boolean) => void;
 }) {
   return (
     <div className="flex flex-wrap gap-3 items-center">
@@ -25,6 +29,7 @@ export default function FilterBar({
           [
             ['trend_score', '🔥 트렌딩'],
             ['latest', '🕐 최신'],
+            ['ait_score', '📱 앱인토스'],
           ] as const
         ).map(([v, l]) => (
           <button
@@ -64,6 +69,18 @@ export default function FilterBar({
           </option>
         ))}
       </select>
+      {onAitOnly && (
+        <button
+          onClick={() => onAitOnly(!aitOnly)}
+          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            aitOnly
+              ? 'bg-teal-700 border-teal-600 text-white'
+              : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
+          }`}
+        >
+          📱 앱인토스 적합
+        </button>
+      )}
     </div>
   );
 }

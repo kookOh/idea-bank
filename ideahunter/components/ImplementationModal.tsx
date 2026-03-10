@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import type { PlatformAnalysis } from '@/types/idea';
 
 type Phase = { step: number; title: string; prompt: string };
 type Prompts = {
@@ -18,26 +19,114 @@ export default function ImplementationModal({
   open,
   onClose,
 }: {
-  idea: { id: string; title: string; recommended_stack?: string[] | null };
+  idea: {
+    id: string;
+    title: string;
+    recommended_stack?: string[] | null;
+    platform_analysis?: PlatformAnalysis | null;
+  };
   open: boolean;
   onClose: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [prompts, setPrompts] = useState<Prompts | null>(null);
+  const [aitPrompts, setAitPrompts] = useState<Prompts | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'master' | 'phases'>('master');
+  const [activeTab, setActiveTab] = useState<'master' | 'phases' | 'appintoss'>('master');
   const [copied, setCopied] = useState('');
+  const [usedProvider, setUsedProvider] = useState<string | null>(null);
 
-  const generate = async () => {
+  const isBridgeAlive = async (): Promise<boolean> => {
+    try {
+      const res = await fetch('http://localhost:3100/health', {
+        signal: AbortSignal.timeout(3_000),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data.status === 'ok';
+    } catch {
+      return false;
+    }
+  };
+
+  const tryLocalBridge = async (ideaData: typeof idea, platform?: 'appintoss') => {
+    // Phase 1: 빠른 health probe (3초)
+    const alive = await isBridgeAlive();
+    if (!alive) return null;
+
+    // Phase 2: 실제 생성 (90초 — CLI 실행 시간 충분히 확보)
+    try {
+      const res = await fetch('http://localhost:3100/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea: ideaData, platform }),
+        signal: AbortSignal.timeout(90_000),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data.master_prompt) return null;
+      return data as { provider: string } & Prompts;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveToServer = async (ideaId: string, promptData: Prompts, platform?: 'appintoss') => {
+    try {
+      const url = platform
+        ? `/api/ideas/${ideaId}/save-prompts?platform=${platform}`
+        : `/api/ideas/${ideaId}/save-prompts`;
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(promptData),
+      });
+    } catch {
+      // 캐시 저장 실패는 무시
+    }
+  };
+
+  const generate = async (platform?: 'appintoss', force?: boolean) => {
     setLoading(true);
     setError(null);
+    setUsedProvider(null);
     try {
-      const res = await fetch(`/api/ideas/${idea.id}/generate-prompts`, { method: 'POST' });
+      // 1순위: 로컬 브릿지 (Claude Code CLI → Codex CLI)
+      if (!force) {
+        const localResult = await tryLocalBridge(idea, platform);
+        if (localResult) {
+          const { provider, ...promptData } = localResult;
+          setUsedProvider(provider);
+          if (platform === 'appintoss') {
+            setAitPrompts(promptData);
+            setActiveTab('appintoss');
+          } else {
+            setPrompts(promptData);
+          }
+          saveToServer(idea.id, promptData, platform);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2순위: 서버 API (Groq)
+      const params = new URLSearchParams();
+      if (platform) params.set('platform', platform);
+      if (force) params.set('force', 'true');
+      const qs = params.toString();
+      const url = `/api/ideas/${idea.id}/generate-prompts${qs ? `?${qs}` : ''}`;
+      const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       if (!res.ok || data.error) {
         setError(data.error ?? '생성 실패');
       } else {
-        setPrompts(data);
+        setUsedProvider('groq');
+        if (platform === 'appintoss') {
+          setAitPrompts(data);
+          setActiveTab('appintoss');
+        } else {
+          setPrompts(data);
+        }
       }
     } catch {
       setError('네트워크 오류, 다시 시도해주세요');
@@ -52,8 +141,17 @@ export default function ImplementationModal({
   };
 
   const copyAll = () => {
-    const fullScript = `#!/bin/bash\n# IdeaHunter 자동 생성 프롬프트: ${idea.title}\n\nclaude --dangerously-skip-permissions -p "\n${prompts?.master_prompt}\n"`;
-    copy(fullScript, 'all');
+    copy(prompts?.master_prompt ?? '', 'all');
+  };
+
+  const hasAitAnalysis = !!idea.platform_analysis;
+  const tabs = hasAitAnalysis
+    ? (['master', 'phases', 'appintoss'] as const)
+    : (['master', 'phases'] as const);
+  const tabLabels: Record<string, string> = {
+    master: '🎯 마스터 프롬프트',
+    phases: '📋 단계별',
+    appintoss: '📱 앱인토스',
   };
 
   return (
@@ -82,7 +180,7 @@ export default function ImplementationModal({
               <div className="text-5xl mb-4">⚠️</div>
               <p className="text-red-400 font-medium mb-4">{error}</p>
               <button
-                onClick={generate}
+                onClick={() => generate()}
                 className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-colors"
               >
                 다시 시도
@@ -91,7 +189,7 @@ export default function ImplementationModal({
           )}
 
           {/* 생성 전 상태 */}
-          {!prompts && !loading && !error && (
+          {!prompts && !aitPrompts && !loading && !error && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🚀</div>
               <h3 className="text-lg font-semibold text-white mb-2">
@@ -113,14 +211,24 @@ export default function ImplementationModal({
                   </span>
                 ))}
               </div>
-              <button
-                onClick={generate}
-                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all text-lg flex items-center gap-2 mx-auto"
-              >
-                <span>✨</span> 프롬프트 생성 시작
-              </button>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => generate()}
+                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold rounded-xl transition-all text-lg flex items-center gap-2"
+                >
+                  <span>✨</span> 프롬프트 생성
+                </button>
+                {hasAitAnalysis && (
+                  <button
+                    onClick={() => generate('appintoss')}
+                    className="px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold rounded-xl transition-all text-lg flex items-center gap-2"
+                  >
+                    <span>📱</span> 앱인토스 프롬프트
+                  </button>
+                )}
+              </div>
               <p className="text-gray-600 text-xs mt-3">
-                Groq AI 사용 (무료) · 약 10-20초 소요
+                로컬 CLI 우선 (Claude Code → Codex) · 폴백: Groq AI
               </p>
             </div>
           )}
@@ -137,46 +245,68 @@ export default function ImplementationModal({
           )}
 
           {/* 생성 완료 */}
-          {prompts && (
+          {(prompts || aitPrompts) && (
             <div>
               {/* 프로젝트 정보 */}
-              <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-green-400">✓</span>
-                  <span className="font-semibold text-white">{prompts.project_name}</span>
-                </div>
-                <p className="text-gray-400 text-sm mb-3">{prompts.overview}</p>
-                <div className="flex flex-wrap gap-2">
-                  {prompts.free_services?.map((s) => (
-                    <span
-                      key={s}
-                      className="text-xs px-2 py-1 bg-green-900/30 text-green-400 rounded-full"
-                    >
-                      🆓 {s}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              {(() => {
+                const currentPrompts = activeTab === 'appintoss' ? aitPrompts : prompts;
+                if (!currentPrompts) return null;
+                return (
+                  <div className="bg-gray-800/50 rounded-xl p-4 mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-green-400">✓</span>
+                      <span className="font-semibold text-white">{currentPrompts.project_name}</span>
+                      {usedProvider && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          usedProvider === 'claude-code' ? 'bg-orange-900/40 text-orange-300' :
+                          usedProvider === 'codex' ? 'bg-emerald-900/40 text-emerald-300' :
+                          'bg-blue-900/40 text-blue-300'
+                        }`}>
+                          {usedProvider === 'claude-code' ? 'Claude Code' :
+                           usedProvider === 'codex' ? 'Codex' : 'Groq AI'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm mb-3">{currentPrompts.overview}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {currentPrompts.free_services?.map((s) => (
+                        <span
+                          key={s}
+                          className="text-xs px-2 py-1 bg-green-900/30 text-green-400 rounded-full"
+                        >
+                          🆓 {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 탭 */}
               <div className="flex gap-2 mb-4">
-                {(['master', 'phases'] as const).map((tab) => (
+                {tabs.map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => {
+                      if (tab === 'appintoss' && !aitPrompts) {
+                        generate('appintoss');
+                      } else {
+                        setActiveTab(tab);
+                      }
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === tab
-                        ? 'bg-purple-600 text-white'
+                        ? tab === 'appintoss' ? 'bg-teal-600 text-white' : 'bg-purple-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:text-white'
                     }`}
                   >
-                    {tab === 'master' ? '🎯 원클릭 마스터 프롬프트' : '📋 단계별 프롬프트'}
+                    {tabLabels[tab]}
                   </button>
                 ))}
               </div>
 
               {/* 마스터 프롬프트 탭 */}
-              {activeTab === 'master' && (
+              {activeTab === 'master' && prompts && (
                 <div>
                   <div className="relative">
                     <pre className="bg-gray-950 rounded-xl p-4 text-sm text-gray-300 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed">
@@ -201,19 +331,28 @@ export default function ImplementationModal({
                     </div>
                   </div>
 
-                  <button
-                    onClick={copyAll}
-                    className="w-full mt-4 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    {copied === 'all'
-                      ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
-                      : '⚡ 실행 스크립트 전체 복사 (Claude Code에 바로 사용)'}
-                  </button>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={copyAll}
+                      className="flex-1 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      {copied === 'all'
+                        ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
+                        : '⚡ 마스터 프롬프트 전체 복사'}
+                    </button>
+                    <button
+                      onClick={() => generate(undefined, true)}
+                      disabled={loading}
+                      className="px-4 py-4 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 font-medium rounded-xl transition-all text-sm whitespace-nowrap"
+                    >
+                      {loading ? '생성 중...' : '재생성'}
+                    </button>
+                  </div>
                 </div>
               )}
 
               {/* 단계별 프롬프트 탭 */}
-              {activeTab === 'phases' && (
+              {activeTab === 'phases' && prompts && (
                 <div className="flex flex-col gap-3">
                   {prompts.phases?.map((phase) => (
                     <div key={phase.step} className="bg-gray-800/50 rounded-xl p-4">
@@ -236,6 +375,70 @@ export default function ImplementationModal({
                       </p>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* 앱인토스 탭 */}
+              {activeTab === 'appintoss' && aitPrompts && (
+                <div>
+                  {/* 플랫폼 정보 배지 */}
+                  {idea.platform_analysis && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="text-xs px-3 py-1.5 bg-teal-900/40 text-teal-300 rounded-full font-medium">
+                        {idea.platform_analysis.ait_target_type === 'react-native' ? '📱 React Native' : '🌐 WebView'}
+                      </span>
+                      <span className="text-xs px-3 py-1.5 bg-teal-900/40 text-teal-300 rounded-full font-medium">
+                        적합도 {idea.platform_analysis.ait_score}점
+                      </span>
+                      <span className="text-xs px-3 py-1.5 bg-teal-900/40 text-teal-300 rounded-full font-medium">
+                        {idea.platform_analysis.ait_category}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 마스터 프롬프트 */}
+                  <div className="relative">
+                    <pre className="bg-gray-950 rounded-xl p-4 text-sm text-gray-300 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed">
+                      {aitPrompts.master_prompt}
+                    </pre>
+                    <button
+                      onClick={() => copy(aitPrompts.master_prompt, 'ait-master')}
+                      className="absolute top-3 right-3 px-3 py-1 bg-teal-700 hover:bg-teal-600 rounded-lg text-xs transition-colors"
+                    >
+                      {copied === 'ait-master' ? '✓ 복사됨' : '복사'}
+                    </button>
+                  </div>
+
+                  {/* 심사 체크리스트 미리보기 */}
+                  <div className="mt-4 p-4 bg-teal-900/20 border border-teal-800/50 rounded-xl">
+                    <p className="text-teal-300 text-sm font-medium mb-3">📋 앱인토스 심사 체크리스트</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
+                      <div>☐ 운영 심사: 앱 이름/설명 가이드라인</div>
+                      <div>☐ 디자인 심사: TDS 100% 사용</div>
+                      <div>☐ 기능 심사: 핵심 기능 정상 동작</div>
+                      <div>☐ 보안 심사: 외부 링크/앱 설치 차단</div>
+                      <div>☐ SDK 2.0.1+ 사용</div>
+                      <div>☐ .ait 빌드 산출물 확인</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => copy(aitPrompts.master_prompt, 'ait-all')}
+                      className="flex-1 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                      {copied === 'ait-all'
+                        ? '✓ 복사 완료! Claude Code에 붙여넣기 하세요'
+                        : '📱 앱인토스 마스터 프롬프트 전체 복사'}
+                    </button>
+                    <button
+                      onClick={() => generate('appintoss', true)}
+                      disabled={loading}
+                      className="px-4 py-4 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 font-medium rounded-xl transition-all text-sm whitespace-nowrap"
+                    >
+                      {loading ? '생성 중...' : '재생성'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

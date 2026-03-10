@@ -1,14 +1,30 @@
-import Groq from 'groq-sdk';
+import { getGroqClient } from './groq-client';
 
-function getGroqClient() {
-  return new Groq({ apiKey: process.env.GROQ_API_KEY });
+function getSourceContext(source?: string): string {
+  switch (source) {
+    case 'playstore':
+    case 'appstore':
+    case 'appbrain':
+      return '모바일 앱 - 앱인토스 미니앱으로 구현 가능성 고려';
+    case 'hackernews':
+    case 'reddit':
+      return '커뮤니티 토론 기반 아이디어';
+    case 'producthunt':
+      return '신규 런칭 제품/서비스';
+    case 'github':
+      return '오픈소스 프로젝트/개발 도구';
+    default:
+      return '알 수 없는 소스';
+  }
 }
 
-export async function analyzeIdea(title: string, description: string) {
+export async function analyzeIdea(title: string, description: string, source?: string) {
+  const sourceContext = getSourceContext(source);
   const prompt = `다음 비즈니스 아이디어를 분석해서 JSON으로만 응답해 (다른 텍스트 없이):
 
 아이디어: ${title}
 설명: ${description}
+소스: ${source ?? '알 수 없음'} (${sourceContext})
 
 응답 형식:
 {

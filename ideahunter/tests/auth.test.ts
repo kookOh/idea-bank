@@ -69,9 +69,9 @@ describe('verifyApiKey', () => {
     expect(verifyApiKey(req)).toBe(false);
   });
 
-  test('API_SECRET 미설정 시 인증 스킵 (true)', () => {
+  test('API_SECRET 미설정 시 fail-closed (false)', () => {
     delete process.env.API_SECRET;
     const req = new Request('http://localhost');
-    expect(verifyApiKey(req)).toBe(true);
+    expect(verifyApiKey(req)).toBe(false);
   });
 });

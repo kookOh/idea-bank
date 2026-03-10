@@ -19,6 +19,8 @@ export default function DigestBanner() {
 
   if (!digest?.top_ideas?.length) return null;
 
+  const previewTopics = digest.hot_topics?.slice(0, 2) ?? [];
+
   return (
     <Link
       href="/digest"
@@ -26,10 +28,22 @@ export default function DigestBanner() {
         border border-purple-700/50 rounded-xl hover:border-purple-500/50 transition-colors"
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-yellow-400">👑</span>
+        <span className="text-yellow-400 animate-pulse">👑</span>
         <span className="font-bold text-white">오늘의 Hot 아이디어 TOP 10</span>
         <span className="text-xs text-gray-400">{digest.date}</span>
       </div>
+      {previewTopics.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {previewTopics.map((topic, i) => (
+            <span
+              key={i}
+              className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-800/50 text-purple-200 border border-purple-600/40"
+            >
+              {topic}
+            </span>
+          ))}
+        </div>
+      )}
       <p className="text-gray-400 text-sm">
         {digest.top_ideas?.[0]?.title} 외 {digest.top_ideas?.length - 1}개의 아이디어 →
       </p>

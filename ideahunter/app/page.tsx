@@ -11,6 +11,7 @@ export default function Home() {
   const [sort, setSort] = useState('trend_score');
   const [source, setSource] = useState('');
   const [tag, setTag] = useState('');
+  const [aitOnly, setAitOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -55,6 +56,9 @@ export default function Home() {
           <a href="/digest" className="text-gray-400 hover:text-white">
             오늘의 TOP 10
           </a>
+          <a href="/ait" className="text-gray-400 hover:text-white">
+            앱인토스
+          </a>
         </nav>
       </header>
 
@@ -64,13 +68,17 @@ export default function Home() {
           sort={sort}
           source={source}
           tag={tag}
+          aitOnly={aitOnly}
           onSort={(s) => setSort(s)}
           onSource={(s) => setSource(s)}
           onTag={(t) => setTag(t)}
+          onAitOnly={(v) => setAitOnly(v)}
         />
 
         <div className="mt-6 flex flex-col gap-4">
-          {ideas.map((idea) => (
+          {ideas
+            .filter((idea) => !aitOnly || (idea.platform_analysis && idea.platform_analysis.ait_score >= 70))
+            .map((idea) => (
             <IdeaCard key={idea.id} idea={idea} />
           ))}
         </div>

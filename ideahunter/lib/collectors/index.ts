@@ -12,3 +12,6 @@ export { collectHackerNews } from './hackernews';
 export { collectReddit } from './reddit';
 export { collectProductHunt } from './producthunt';
 export { collectGitHub } from './github';
+export { collectPlayStore } from './playstore';
+export { collectAppStore } from './appstore';
+export { collectAppBrain } from './appbrain';
