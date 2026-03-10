@@ -18,6 +18,12 @@ export async function POST(
   if (!idea) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   try {
+    // body 크기 제한 (50KB)
+    const contentLength = parseInt(req.headers.get('content-length') ?? '0');
+    if (contentLength > 50_000) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    }
+
     const prompts = await req.json();
 
     // 페이로드 형식 검증
@@ -30,6 +36,11 @@ export async function POST(
       !Array.isArray(prompts.free_services)
     ) {
       return NextResponse.json({ error: 'Invalid prompt payload shape' }, { status: 400 });
+    }
+
+    // 문자열 길이 제한
+    if (prompts.master_prompt.length > 30_000 || prompts.project_name.length > 100 || prompts.overview.length > 1000) {
+      return NextResponse.json({ error: 'Field too long' }, { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);

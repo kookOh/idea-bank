@@ -31,7 +31,7 @@ async function fetchAppStoreTrending(): Promise<RawIdea[]> {
       const genre = app.genres?.[0]?.name ?? '기타';
       results.push({
         title: app.name,
-        description: `${genre} - ${app.artistName} | iOS App Store 트렌딩`,
+        description: `${genre} 앱 - ${app.artistName} | iOS App Store 인기 무료 앱`,
         source: 'appstore',
         source_url: app.url,
         score: 0,

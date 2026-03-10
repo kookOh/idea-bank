@@ -17,7 +17,7 @@ export async function GET() {
   // 없으면 실시간 생성
   const { data: ideas } = await supabase
     .from('ideas')
-    .select('*')
+    .select('id, title, description, source, source_url, score, comment_count, collected_at, summary_ko, market_size, difficulty, revenue_potential, competition, recommended_stack, mvp_days, tags, trend_score, platform_analysis, implementation_status')
     .gte('collected_at', new Date(Date.now() - 86400000).toISOString())
     .order('trend_score', { ascending: false })
     .limit(10);

@@ -40,7 +40,7 @@ async function fetchAppBrainTrending(): Promise<RawIdea[]> {
 
         results.push({
           title,
-          description: `${page.label} - AppBrain 트렌드 분석`,
+          description: `${title} - ${page.label} | Android 앱`,
           source: 'appbrain',
           source_url: `https://play.google.com/store/apps/details?id=${appId}`,
           score: 0,

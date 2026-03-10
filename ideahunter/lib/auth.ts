@@ -23,7 +23,10 @@ export function verifyCronSecret(authHeader: string | null): boolean {
  */
 export function verifyApiKey(req: Request): boolean {
   const apiKey = process.env.API_SECRET;
-  if (!apiKey) return true; // API_SECRET 미설정 시 인증 스킵 (개발 환경)
+  if (!apiKey) {
+    console.error('SECURITY: API_SECRET is not set. Denying all requests.');
+    return false;
+  }
 
   const header = req.headers.get('x-api-key') ?? '';
   const bearer = req.headers.get('authorization')?.slice(7) ?? '';

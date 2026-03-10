@@ -72,7 +72,7 @@ export default function IdeaCard({ idea }: { idea: Idea }) {
 
         {/* 제목 */}
         <a
-          href={idea.source_url}
+          href={idea.source_url?.startsWith('http') ? idea.source_url : '#'}
           target="_blank"
           rel="noopener noreferrer"
           className="text-lg font-semibold text-white hover:text-purple-300 transition-colors block mb-2"

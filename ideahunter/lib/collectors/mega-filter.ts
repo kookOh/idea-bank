@@ -38,3 +38,17 @@ const MEGA_APP_PREFIXES = [
 export function isMegaApp(appId: string): boolean {
   return MEGA_APP_PREFIXES.some((prefix) => appId.startsWith(prefix));
 }
+
+/** 앱인토스 미니앱으로 부적합한 카테고리 목록 (게임 등) */
+const EXCLUDED_GENRE_IDS = [
+  'GAME', 'GAME_ACTION', 'GAME_ADVENTURE', 'GAME_ARCADE', 'GAME_BOARD',
+  'GAME_CARD', 'GAME_CASINO', 'GAME_CASUAL', 'GAME_EDUCATIONAL',
+  'GAME_MUSIC', 'GAME_PUZZLE', 'GAME_RACING', 'GAME_ROLE_PLAYING',
+  'GAME_SIMULATION', 'GAME_SPORTS', 'GAME_STRATEGY', 'GAME_TRIVIA',
+  'GAME_WORD',
+];
+
+/** genreId가 앱인토스 미니앱으로 부적합한 카테고리에 해당하는지 확인 */
+export function isExcludedCategory(genreId: string): boolean {
+  return EXCLUDED_GENRE_IDS.some((id) => genreId.toUpperCase().startsWith(id));
+}

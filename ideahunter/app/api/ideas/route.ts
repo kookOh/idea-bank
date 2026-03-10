@@ -23,9 +23,11 @@ export async function GET(req: NextRequest) {
 
   const orderColumn = sort === 'latest' ? 'collected_at' : 'trend_score';
 
+  const selectColumns = 'id, title, description, source, source_url, score, comment_count, collected_at, summary_ko, market_size, difficulty, revenue_potential, competition, recommended_stack, mvp_days, tags, trend_score, platform_analysis, implementation_status, generated_prompts';
+
   let query = supabase
     .from('ideas')
-    .select('*')
+    .select(selectColumns)
     .not('summary_ko', 'is', null)
     .order(orderColumn, { ascending: false })
     .range(page * limit, (page + 1) * limit - 1);
@@ -34,7 +36,7 @@ export async function GET(req: NextRequest) {
   if (sort === 'ait_score') {
     query = supabase
       .from('ideas')
-      .select('*')
+      .select(selectColumns)
       .not('summary_ko', 'is', null)
       .not('platform_analysis', 'is', null)
       .order('trend_score', { ascending: false })
